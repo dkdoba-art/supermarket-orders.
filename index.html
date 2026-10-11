@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#5aa51f">
+<title>Orders</title>
+<style>
+:root{--g:#5aa51f;--g2:#8cc63f;--bg:#f3f5f1;--tx:#17231a;--mu:#6b7a6e}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font:16px/1.4 system-ui,Tahoma,sans-serif;background:var(--bg);color:var(--tx);padding-bottom:150px}
+header{background:linear-gradient(var(--g2),var(--g));padding:14px 14px 10px;color:#12300a;position:sticky;top:0;z-index:5}
+h1{margin:0;font-size:19px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.ls{border:0;border-radius:8px;padding:4px 6px;font:inherit;font-size:13px}
+.srch{flex:1;min-width:0;padding:11px 14px;border:0;border-radius:12px;font:inherit}
+.row{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;padding:10px 12px;background:#fff;border-bottom:1px solid #e6ebe4}
+.im{width:64px;height:64px;border-radius:10px;background:#eef2ec;display:grid;place-items:center;font-size:26px;overflow:hidden}
+.im img{width:100%;height:100%;object-fit:cover}
+.nm{min-width:0}.nm b{display:block;font-size:17px}.nm small,.mu{color:var(--mu)}
+.lnk{border:0;background:none;color:var(--g);font:inherit;font-size:14px;padding:4px 0}
+.pill{display:flex;align-items:center;background:#eceee9;border-radius:24px;padding:3px}
+.pill button{width:38px;height:38px;border:0;border-radius:50%;background:none;font-size:24px;color:var(--mu)}
+.pill button:last-child{color:var(--g);font-weight:700}
+.pill input{width:44px;border:0;background:none;text-align:center;font:inherit;font-size:18px}
+.big{padding:8px 16px;font-weight:700;font-size:18px}
+.dt{grid-column:1/-1;background:#f7f9f5;border-radius:10px;padding:10px;font-size:14px;color:#44544a}
+.acts{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+nav{position:fixed;bottom:0;inset-inline:0;display:flex;background:#fff;border-top:1px solid #dfe5dc;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;background:none;padding:8px 0;font:inherit;font-size:13px;color:var(--mu)}
+nav button.on{color:var(--g);font-weight:700}
+.act{position:fixed;bottom:calc(56px + env(safe-area-inset-bottom));inset-inline:0;display:flex;gap:8px;padding:8px 12px;background:#fffffff2;border-top:1px solid #dfe5dc}
+.act .b{flex:1;padding:12px 6px}
+.b{border:0;border-radius:12px;padding:11px 16px;font:inherit;font-weight:600;background:var(--g);color:#fff}
+.b.s{background:#e3eadf;color:#2d4a22}.b.r{background:#c0392b}
+.card{background:#fff;margin:10px 12px;border-radius:14px;padding:12px;box-shadow:0 1px 2px #0002;overflow:hidden}
+.card .its{margin:10px -12px -12px}
+.chip{font-size:12px;padding:2px 10px;border-radius:10px;background:#fde68a;color:#3b2f00}
+.chip.c{background:#bbf7d0}.chip.d{background:#e5e7eb}
+.f{display:block;width:100%;padding:12px;margin:6px 0;border:1px solid #cfd8cb;border-radius:12px;font:inherit}
+.auth{max-width:380px;margin:6vh auto;padding:20px}
+.empty{text-align:center;color:var(--mu);padding:48px 16px}
+dialog{border:0;border-radius:18px;width:92%;max-width:420px;padding:16px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<dialog id="dlg">
+<h3 style="margin:0 0 8px" data-t="prod"></h3>
+<img id="pv" hidden style="width:100%;height:160px;object-fit:cover;border-radius:12px">
+<label class="b s" style="display:block;text-align:center;margin:6px 0"><span data-t="photo"></span><input type="file" accept="image/*" hidden onchange="pick(this)"></label>
+<input class="f" id="dn" data-p="pn">
+<input class="f" id="dw" data-p="pw2">
+<input class="f" id="dc" data-p="pc">
+<textarea class="f" id="dd" rows="3" data-p="pnote"></textarea>
+<div class="acts"><button class="b" onclick="saveP()" data-t="saveb"></button><button class="b s" onclick="$('#dlg').close()" data-t="cancel"></button></div>
+</dialog>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ---------- اللغات / Langues / Languages ---------- */
+const L=localStorage.sm_l||'ar',LI={ar:0,fr:1,en:2}[L];
+document.documentElement.lang=L;document.documentElement.dir=L==='ar'?'rtl':'ltr';
+const D={
+app:['طلبات المخزن','Commandes du magasin','Stock Orders'],
+rs:['إرسال','Envoi','Sender'],rr:['استقبال','Réception','Receiver'],
+out:['خروج','Quitter','Sign out'],
+srch:['🔍 بحث عن منتج','🔍 Rechercher un produit','🔍 Search products'],
+addp:['＋ منتج','＋ Produit','＋ Product'],
+tp:['المنتجات','Produits','Products'],to:['الطلبية','Commande','Order'],ts:['الطلبيات','Commandes','Orders'],tn:['الجديدة','Nouvelles','New'],tc:['المؤكدة','Confirmées','Confirmed'],
+nores:['لا توجد نتيجة','Aucun résultat','No results'],
+first:['ابدأ بإضافة أول منتج بزر «＋ منتج» وصوّره بالكاميرا','Ajoutez votre premier produit avec « ＋ Produit » et prenez-le en photo','Add your first product with “＋ Product” and take its photo'],
+empo:['الطلبية فارغة.<br>اكتب الكميات من تبويب «المنتجات».','La commande est vide.<br>Saisissez les quantités dans l’onglet « Produits ».','The order is empty.<br>Enter quantities in the “Products” tab.'],
+noords:['لا توجد طلبيات','Aucune commande','No orders'],
+det:['تفاصيل ▾','Détails ▾','Details ▾'],
+wt:['الوزن/الحجم: ','Poids/volume : ','Weight/size: '],ct:['في الكرتون: ','Par carton : ','Per carton: '],
+nod:['لا توجد تفاصيل','Aucun détail','No details'],
+edit:['✏️ تعديل','✏️ Modifier','✏️ Edit'],del:['🗑 حذف','🗑 Supprimer','🗑 Delete'],
+view:['عرض الأصناف','Voir les articles','View items'],
+send:['📤 إرسال','📤 Envoyer','📤 Send'],save:['💾 حفظ','💾 Enregistrer','💾 Save'],
+savee:['💾 حفظ التعديل','💾 Enregistrer les modifications','💾 Save changes'],
+clr:['تفريغ','Vider','Clear'],
+oname:['اسم الطلبية (اختياري)','Nom de la commande (facultatif)','Order name (optional)'],
+editing:['✏️ أنت تعدّل طلبية موجودة','✏️ Vous modifiez une commande existante','✏️ You are editing an existing order'],
+std:['مسودة','Brouillon','Draft'],sts:['أُرسلت','Envoyée','Sent'],stc:['مؤكدة','Confirmée','Confirmed'],
+sat:['🕒 أُرسلت: {0}','🕒 Envoyée : {0}','🕒 Sent: {0}'],cat:['أُنشئت: {0}','Créée : {0}','Created: {0}'],
+eat:['✏️ عُدّلت: {0}','✏️ Modifiée : {0}','✏️ Edited: {0}'],cfat:['✅ أُكّدت: {0}','✅ Confirmée : {0}','✅ Confirmed: {0}'],
+np:['{0} منتج','{0} produit(s)','{0} product(s)'],
+cfb:['✅ تأكيد','✅ Confirmer','✅ Confirm'],
+odef:['طلبية {0}','Commande {0}','Order {0}'],
+login:['تسجيل الدخول','Connexion','Sign in'],regt:['إنشاء حساب جديد','Créer un compte','Create an account'],
+nm:['الاسم','Nom','Name'],em:['البريد الإلكتروني','E-mail','Email'],
+pw:['كلمة السر (6 أحرف على الأقل)','Mot de passe (6 caractères minimum)','Password (at least 6 characters)'],
+enter:['دخول','Se connecter','Sign in'],create:['إنشاء الحساب','Créer le compte','Create account'],
+have:['لدي حساب','J’ai déjà un compte','I already have an account'],
+forgot:['نسيت كلمة السر','Mot de passe oublié','Forgot password'],
+entname:['اكتب اسمك','Saisissez votre nom','Enter your name'],
+entmail:['اكتب بريدك أولًا','Saisissez d’abord votre e-mail','Enter your email first'],
+resets:['أرسلنا رابط تغيير كلمة السر إلى بريدك','Lien de réinitialisation envoyé par e-mail','We emailed you a password reset link'],
+vt:['أكّد بريدك','Confirmez votre e-mail','Verify your email'],
+vx:['أرسلنا رابط التأكيد إلى <b>{0}</b>. افتح بريدك واضغط الرابط (تفقّد البريد غير الهام أيضًا) ثم عد إلى هنا.','Nous avons envoyé un lien de confirmation à <b>{0}</b>. Ouvrez-le (vérifiez aussi les courriers indésirables) puis revenez ici.','We sent a verification link to <b>{0}</b>. Open it (check spam too), then come back here.'],
+vdone:['تأكدت، تابع','C’est confirmé, continuer','I verified, continue'],
+vre:['إعادة إرسال الرابط','Renvoyer le lien','Resend link'],
+vres:['أُعيد الإرسال','Lien renvoyé','Link resent'],
+vno:['لم يتم التأكيد بعد. افتح الرابط في بريدك أولًا.','Pas encore confirmé. Ouvrez d’abord le lien dans votre e-mail.','Not verified yet. Open the link in your email first.'],
+hi:['مرحبًا {0}','Bonjour {0}','Hello {0}'],
+choose:['اختر نوع هذا الحساب (لا يمكن تغييره لاحقًا):','Choisissez le type de ce compte (non modifiable) :','Choose this account’s type (cannot be changed later):'],
+bs:['📤 حساب الإرسال','📤 Compte d’envoi','📤 Sender account'],br:['📥 حساب الاستقبال','📥 Compte de réception','📥 Receiver account'],
+noperm:['الحسابان مستخدمان بالفعل وليس لهذا الحساب صلاحية.','Les deux comptes sont déjà utilisés ; ce compte n’a pas d’accès.','Both accounts are already taken; this account has no access.'],
+conn:['تعذر الاتصال: {0}','Connexion impossible : {0}','Connection failed: {0}'],
+claim:['تعذر الاختيار، ربما سبقك حساب آخر.','Choix impossible, un autre compte a peut-être été plus rapide.','Could not choose; another account may have taken it.'],
+prod:['منتج','Produit','Product'],
+photo:['📷 إضافة / تغيير الصورة','📷 Ajouter / changer la photo','📷 Add / change photo'],
+pn:['اسم المنتج','Nom du produit','Product name'],
+pw2:['الوزن أو الحجم (مثال: 1 كغ)','Poids ou volume (ex. 1 kg)','Weight or size (e.g. 1 kg)'],
+pc:['عدد القطع في الكرتون','Nombre de pièces par carton','Pieces per carton'],
+pnote:['ملاحظات','Remarques','Notes'],
+cancel:['إلغاء','Annuler','Cancel'],saveb:['حفظ','Enregistrer','Save'],
+entpn:['اكتب اسم المنتج','Saisissez le nom du produit','Enter the product name'],
+qclr:['تفريغ الطلبية الحالية؟','Vider la commande en cours ?','Clear the current order?'],
+qdo:['حذف هذه الطلبية؟','Supprimer cette commande ?','Delete this order?'],
+qdp:['حذف هذا المنتج؟','Supprimer ce produit ?','Delete this product?'],
+qcf:['تأكيد تجهيز هذه الطلبية؟','Confirmer la préparation de cette commande ?','Confirm this order is prepared?'],
+emptyal:['الطلبية فارغة','La commande est vide','The order is empty'],
+saveerr:['تعذر الحفظ: {0}','Échec de l’enregistrement : {0}','Save failed: {0}'],
+e1:['هذا البريد مسجّل مسبقًا','Cet e-mail est déjà utilisé','This email is already registered'],
+e2:['بريد غير صالح','E-mail invalide','Invalid email'],
+e3:['كلمة السر ضعيفة (6 أحرف على الأقل)','Mot de passe trop faible (6 caractères minimum)','Weak password (at least 6 characters)'],
+e4:['البريد أو كلمة السر غير صحيحة','E-mail ou mot de passe incorrect','Incorrect email or password'],
+e5:['محاولات كثيرة، انتظر قليلًا','Trop de tentatives, patientez un instant','Too many attempts, please wait'],
+cfg:['ضع إعدادات Firebase في أول الكود (CFG).','Placez la configuration Firebase au début du code (CFG).','Put your Firebase config at the top of the code (CFG).']
+};
+const t=(k,...a)=>D[k][LI].replace(/\{(\d)\}/g,(_,i)=>a[i]);
+const lsel=()=>`<select class="ls" onchange="localStorage.sm_l=this.value;location.reload()">${[['ar','العربية'],['fr','Français'],['en','English']].map(([k,n])=>`<option value="${k}"${k===L?' selected':''}>${n}</option>`).join('')}</select>`;
+const er=x=>{const m={'auth/email-already-in-use':'e1','auth/invalid-email':'e2','auth/weak-password':'e3','auth/invalid-credential':'e4','auth/wrong-password':'e4','auth/user-not-found':'e4','auth/too-many-requests':'e5'}[x.code];return m?t(m):x.message};
+document.title=t('app');
+document.querySelectorAll('[data-t]').forEach(e=>e.innerHTML=t(e.dataset.t));
+document.querySelectorAll('[data-p]').forEach(e=>e.placeholder=t(e.dataset.p));
+
+// ===== ضع هنا إعدادات Firebase الخاصة بك =====
+const CFG={apiKey:"API_KEY",authDomain:"PROJECT_ID.firebaseapp.com",projectId:"PROJECT_ID",appId:"APP_ID"};
+// =============================================
+if(CFG.projectId==='PROJECT_ID'){document.body.innerHTML='<p style="padding:24px">'+t('cfg')+'</p><p style="padding:0 24px">'+lsel()+'</p>';throw 0}
+firebase.initializeApp(CFG);
+const auth=firebase.auth(),db=firebase.firestore();
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=x=>x?new Date(x).toLocaleString({ar:'ar-DZ-u-nu-latn',fr:'fr-FR',en:'en-GB'}[L],{dateStyle:'short',timeStyle:'short'}):'';
+let role=null,products=[],orders=[],tab='p',q='',reg=false,unsubs=[],eid=null,eimg='';
+let cur=JSON.parse(localStorage.sm_c||'null')||{qty:{},editing:null,title:''};
+const sv=()=>localStorage.sm_c=JSON.stringify(cur);
+const unsub=()=>{unsubs.forEach(f=>f());unsubs=[]};
+const items=o=>(o.items||[]).map(i=>[products.find(p=>p.id===i.id),i.qty]).filter(x=>x[0]);
+
+/* ---------- الحساب ---------- */
+auth.onAuthStateChanged(u=>{unsub();role=null;if(!u)return va();if(!u.emailVerified)return vv(u);boot(u)});
+function va(){$('#app').innerHTML=`<div class="auth"><div style="text-align:end">${lsel()}</div><h1 style="color:var(--g)">${t('app')}</h1><p class="mu">${t(reg?'regt':'login')}</p>${reg?`<input class="f" id="an" placeholder="${t('nm')}">`:''}<input class="f" id="ae" type="email" placeholder="${t('em')}" autocomplete="email"><input class="f" id="ap" type="password" placeholder="${t('pw')}"><button class="b" style="width:100%" onclick="go()">${t(reg?'create':'enter')}</button><p style="text-align:center"><button class="lnk" onclick="reg=!reg;va()">${t(reg?'have':'regt')}</button>${reg?'':`<br><button class="lnk" onclick="fp()">${t('forgot')}</button>`}</p></div>`}
+async function go(){const e=$('#ae').value.trim(),p=$('#ap').value;try{
+ if(reg){const n=$('#an').value.trim();if(!n)return alert(t('entname'));const c=await auth.createUserWithEmailAndPassword(e,p);await c.user.updateProfile({displayName:n});await c.user.sendEmailVerification()}
+ else await auth.signInWithEmailAndPassword(e,p)
+}catch(x){alert(er(x))}}
+function fp(){const e=$('#ae').value.trim();if(!e)return alert(t('entmail'));auth.sendPasswordResetEmail(e).then(()=>alert(t('resets')),x=>alert(er(x)))}
+function vv(u){$('#app').innerHTML=`<div class="auth"><div style="text-align:end">${lsel()}</div><h2>${t('vt')}</h2><p>${t('vx',esc(u.email))}</p><button class="b" style="width:100%;margin:6px 0" onclick="chk()">${t('vdone')}</button><button class="b s" style="width:100%;margin:6px 0" onclick="auth.currentUser.sendEmailVerification().then(()=>alert(t('vres')))">${t('vre')}</button><button class="lnk" onclick="auth.signOut()">${t('out')}</button></div>`}
+async function chk(){const u=auth.currentUser;await u.reload();if(u.emailVerified){await u.getIdToken(true);boot(u)}else alert(t('vno'))}
+async function boot(u){role=null;try{
+ const [s,r]=await Promise.all(['sender','receiver'].map(x=>db.doc('roles/'+x).get()));
+ if(s.exists&&s.data().uid===u.uid)role='sender';else if(r.exists&&r.data().uid===u.uid)role='receiver';
+ if(role)return start();
+ const free=[['sender','bs',s],['receiver','br',r]].filter(x=>!x[2].exists);
+ $('#app').innerHTML=`<div class="auth"><div style="text-align:end">${lsel()}</div><h2>${t('hi',esc(u.displayName))}</h2>${free.length?`<p>${t('choose')}</p>`+free.map(x=>`<button class="b" style="width:100%;margin:6px 0" onclick="cl('${x[0]}')">${t(x[1])}</button>`).join(''):`<p>${t('noperm')}</p>`}<button class="lnk" onclick="auth.signOut()">${t('out')}</button></div>`;
+}catch(e){alert(t('conn',e.code))}}
+async function cl(r){try{await db.doc('roles/'+r).set({uid:auth.currentUser.uid,name:auth.currentUser.displayName||''})}catch(e){alert(t('claim'))}boot(auth.currentUser)}
+function start(){tab=role==='sender'?'p':'n';const ce=e=>console.error(e);
+ unsubs=[db.collection('products').orderBy('ts','desc').onSnapshot(s=>{products=s.docs.map(d=>({id:d.id,...d.data()}));render()},ce),
+ db.collection('orders').orderBy('createdAt','desc').onSnapshot(s=>{orders=s.docs.map(d=>({id:d.id,...d.data()}));render()},ce)];render()}
+
+/* ---------- الواجهة ---------- */
+function row(p,n,m){return `<div class="row"><div class="im">${p.img?`<img src="${p.img}">`:'📦'}</div>
+<div class="nm"><b>${esc(p.name)}</b><small>${esc(p.weight)}</small><br><button class="lnk" onclick="var d=this.closest('.row').querySelector('.dt');d.hidden=!d.hidden">${t('det')}</button></div>
+${m==='v'?`<div class="pill big">× ${n}</div>`:`<div class="pill"><button onclick="st('${p.id}',-1)">−</button><input id="q${p.id}" type="number" inputmode="numeric" min="0" value="${n||''}" placeholder="0" onchange="sq('${p.id}',this.value)"><button onclick="st('${p.id}',1)">+</button></div>`}
+<div class="dt" hidden>${[p.weight&&t('wt')+esc(p.weight),p.carton&&t('ct')+esc(p.carton),esc(p.notes)].filter(Boolean).join('<br>')||t('nod')}${m==='m'?`<div class="acts"><button class="b s" onclick="ep('${p.id}')">${t('edit')}</button><button class="b r" onclick="dp('${p.id}')">${t('del')}</button></div>`:''}</div></div>`}
+function render(){if(!role)return;const S=role==='sender';
+ if(S?!['p','o','s'].includes(tab):!['n','c'].includes(tab))tab=S?'p':'n';
+ const tabs=S?[['p','🛒','tp'],['o','📝','to'],['s','📁','ts']]:[['n','📥','tn'],['c','✅','tc']];
+ let h=`<header><div class="top"><h1>${t('app')}</h1><span>${lsel()} <span class="chip d">${t(S?'rs':'rr')}</span> <button class="lnk" onclick="auth.signOut()">${t('out')}</button></span></div>`;
+ if(tab==='p')h+=`<div class="top" style="margin-top:8px;flex-wrap:nowrap"><input class="srch" placeholder="${t('srch')}" value="${esc(q)}" oninput="q=this.value;dl()"><button class="b" onclick="ep()">${t('addp')}</button></div>`;
+ h+='</header>';let b='';
+ if(tab==='p')b='<div id="list"></div>';
+ else if(tab==='o'){const it=Object.entries(cur.qty).map(([id,n])=>[products.find(p=>p.id===id),n]).filter(x=>x[0]);
+  b=it.length?(cur.editing?`<div class="empty" style="padding:10px">${t('editing')}</div>`:'')+`<div style="padding:6px 12px"><input class="f" placeholder="${t('oname')}" value="${esc(cur.title)}" oninput="cur.title=this.value;sv()"></div>`+it.map(([p,n])=>row(p,n,'e')).join('')+`<div class="act"><button class="b s" onclick="so(0)">${t(cur.editing?'savee':'save')}</button><button class="b" onclick="so(1)">${t('send')}</button><button class="b s" onclick="clr()">${t('clr')}</button></div>`:`<div class="empty">${t('empo')}</div>`}
+ else{const l=S?orders:orders.filter(o=>tab==='n'?o.status==='sent':o.status==='confirmed');
+  b=l.length?l.map(o=>oc(o,S)).join(''):`<div class="empty">${t('noords')}</div>`}
+ const nav=`<nav>${tabs.map(([k,i,n])=>`<button class="${k===tab?'on':''}" onclick="tab='${k}';render();scrollTo(0,0)">${i}<br>${t(n)}${k==='o'?` <span class="chip" id="bd">${Object.keys(cur.qty).length}</span>`:k==='n'?` <span class="chip">${orders.filter(o=>o.status==='sent').length}</span>`:''}</button>`).join('')}</nav>`;
+ $('#app').innerHTML=h+b+nav;if(tab==='p')dl()}
+function dl(){const k=q.trim().toLowerCase(),l=products.filter(p=>p.name.toLowerCase().includes(k));
+ $('#list').innerHTML=l.length?l.map(p=>row(p,cur.qty[p.id],'m')).join(''):`<div class="empty">${t(products.length?'nores':'first')}</div>`}
+function oc(o,S){const it=items(o),c=o.status==='confirmed'?`<span class="chip c">${t('stc')}</span>`:o.status==='sent'?`<span class="chip">${t('sts')}</span>`:`<span class="chip d">${t('std')}</span>`;
+ return `<div class="card"><div class="top"><b>${esc(o.title)}</b>${c}</div>
+<small class="mu">${o.sentAt?t('sat',fmt(o.sentAt)):t('cat',fmt(o.createdAt))}${o.updatedAt>(o.sentAt||o.createdAt)+1000?'<br>'+t('eat',fmt(o.updatedAt)):''}${o.confirmedAt?'<br>'+t('cfat',fmt(o.confirmedAt)):''}<br>${t('np',it.length)}</small>
+<div class="acts"><button class="b s" onclick="var d=this.closest('.card').querySelector('.its');d.hidden=!d.hidden">${t('view')}</button>
+${S&&o.status!=='confirmed'?`<button class="b s" onclick="eo('${o.id}')">${t('edit')}</button>`:''}${S&&o.status==='draft'?`<button class="b" onclick="sd('${o.id}')">${t('send')}</button>`:''}${S?`<button class="b r" onclick="dop('${o.id}')">🗑</button>`:''}${!S&&o.status==='sent'?`<button class="b" onclick="cf('${o.id}')">${t('cfb')}</button>`:''}</div>
+<div class="its" hidden>${it.map(([p,n])=>row(p,n,'v')).join('')}</div></div>`}
+
+/* ---------- الكميات والطلبيات ---------- */
+function sq(id,v){v=Math.max(0,parseInt(v)||0);v?cur.qty[id]=v:delete cur.qty[id];sv();const i=$('#q'+id);if(i)i.value=v||'';const b=$('#bd');if(b)b.textContent=Object.keys(cur.qty).length;if(tab==='o'&&!v)render()}
+const st=(id,d)=>sq(id,(cur.qty[id]||0)+d);
+function clr(){if(confirm(t('qclr'))){cur={qty:{},editing:null,title:''};sv();render()}}
+async function so(send){const its=Object.entries(cur.qty).filter(([id,n])=>n>0&&products.some(p=>p.id===id)).map(([id,qty])=>({id,qty}));
+ if(!its.length)return alert(t('emptyal'));const now=Date.now(),old=cur.editing&&orders.find(o=>o.id===cur.editing);
+ const d={title:cur.title.trim()||t('odef',fmt(now)),items:its,updatedAt:now};if(send){d.status='sent';d.sentAt=now}
+ try{if(old)await db.doc('orders/'+old.id).update(d);else await db.collection('orders').add({status:'draft',createdAt:now,by:auth.currentUser.displayName||'',...d});
+  cur={qty:{},editing:null,title:''};sv();tab='s';render()}catch(e){alert(t('saveerr',e.code))}}
+function eo(id){const o=orders.find(x=>x.id===id);cur={qty:Object.fromEntries((o.items||[]).map(i=>[i.id,i.qty])),editing:id,title:o.title};sv();tab='o';render();scrollTo(0,0)}
+const sd=id=>db.doc('orders/'+id).update({status:'sent',sentAt:Date.now()}).catch(e=>alert(e.code));
+const dop=id=>confirm(t('qdo'))&&db.doc('orders/'+id).delete().catch(e=>alert(e.code));
+const cf=id=>confirm(t('qcf'))&&db.doc('orders/'+id).update({status:'confirmed',confirmedAt:Date.now(),confirmedBy:auth.currentUser.displayName||''}).catch(e=>alert(e.code));
+
+/* ---------- المنتجات ---------- */
+function resize(f){return new Promise(r=>{const i=new Image();i.onload=()=>{const s=Math.min(1,260/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*s;c.height=i.height*s;c.getContext('2d').drawImage(i,0,0,c.width,c.height);r(c.toDataURL('image/jpeg',.6))};i.src=URL.createObjectURL(f)})}
+async function pick(i){if(i.files[0]){eimg=await resize(i.files[0]);$('#pv').src=eimg;$('#pv').hidden=false}}
+function ep(id){eid=id||null;const p=products.find(x=>x.id===id)||{};eimg=p.img||'';$('#dn').value=p.name||'';$('#dw').value=p.weight||'';$('#dc').value=p.carton||'';$('#dd').value=p.notes||'';$('#pv').src=eimg;$('#pv').hidden=!eimg;$('#dlg').showModal()}
+function saveP(){const n=$('#dn').value.trim();if(!n)return alert(t('entpn'));
+ const d={name:n,weight:$('#dw').value.trim(),carton:$('#dc').value.trim(),notes:$('#dd').value.trim(),img:eimg};
+ (eid?db.doc('products/'+eid).update(d):db.collection('products').add({...d,ts:Date.now()})).then(()=>$('#dlg').close()).catch(e=>alert(t('saveerr',e.code)))}
+function dp(id){if(!confirm(t('qdp')))return;delete cur.qty[id];sv();db.doc('products/'+id).delete().catch(e=>alert(e.code))}
+</script>
+</body>
+</html>
