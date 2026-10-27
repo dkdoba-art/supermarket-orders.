@@ -139,8 +139,8 @@ document.title=t('app');
 document.querySelectorAll('[data-t]').forEach(e=>e.innerHTML=t(e.dataset.t));
 document.querySelectorAll('[data-p]').forEach(e=>e.placeholder=t(e.dataset.p));
 
-// ===== ضع هنا إعدادات Firebase الخاصة بك =====
-const CFG={apiKey:"API_KEY",authDomain:"PROJECT_ID.firebaseapp.com",projectId:"PROJECT_ID",appId:"APP_ID"};
+// ===== إعدادات Firebase الخاصة بك =====
+const CFG={apiKey:"AIzaSyCbt6-BQOS9FLnWcJdBr9rSeqOQ8KIzDPk",authDomain:"supermarket-orders-d271f.firebaseapp.com",projectId:"supermarket-orders-d271f",appId:"1:579113910477:web:ec80633420e7a6f7102984"};
 // =============================================
 if(CFG.projectId==='PROJECT_ID'){document.body.innerHTML='<p style="padding:24px">'+t('cfg')+'</p><p style="padding:0 24px">'+lsel()+'</p>';throw 0}
 firebase.initializeApp(CFG);
@@ -227,4 +227,4 @@ function saveP(){const n=$('#dn').value.trim();if(!n)return alert(t('entpn'));
 function dp(id){if(!confirm(t('qdp')))return;delete cur.qty[id];sv();db.doc('products/'+id).delete().catch(e=>alert(e.code))}
 </script>
 </body>
-</html>
+</html>ج
